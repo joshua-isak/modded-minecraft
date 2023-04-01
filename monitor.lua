@@ -28,8 +28,9 @@ gpu.setResolution(30,15)
 function get_turbines_power_generation()
     power_produced = 0
     for k,v in pairs(turbine_list) do
-        power_produced += v.getEnergyProducedLastTick()
+        power_produced = power_produced + v.getEnergyProducedLastTick()
     end
+    return power_produced
 end
 
 function engage_turbine_coils()
