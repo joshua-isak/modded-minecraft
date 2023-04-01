@@ -16,7 +16,35 @@ min_capacity = 0.10
 last_message = "Init Success!"
 current_row = 1
 
+local turbine_list = {}
+for address, name in component.list("turbine", false) do
+    table.insert(turbine_list, component.proxy(address))
+end
+
+
 gpu.setResolution(30,15)
+
+
+function get_turbines_power_generation()
+    power_produced = 0
+    for k,v in pairs(turbine_list) do
+        power_produced += v.getEnergyProducedLastTick()
+    end
+end
+
+function engage_turbine_coils()
+    for k,v in pairs(turbine_list) do
+        v.setInductorEngaged(true)
+    end
+end
+
+
+function disengage_turbine_coils()
+    for k,v in pairs(turbine_list) do
+        v.setInductorEngaged(false)
+    end
+end
+
 
 function draw_space()
     current_row = current_row + 1
@@ -55,7 +83,7 @@ function draw_turbine_status()
     current_row = current_row + 1
     term.setCursor(1, current_row)
     term.write("Turbine Speed:  ")
-    term.write(tostring(math.floor(turbine.getRotorSpeed())) .. " RPM")
+    term.write(tostring(math.floor(turbine.getRotorSpeed())) .. " RPM       ")
     current_row = current_row + 1
 end
 
@@ -92,19 +120,19 @@ function draw_grid_usage()
     current_row = current_row + 1
 end
 
-function draw_energy_produced()
+function draw_energy_produced(generation)
     term.setCursor(1, current_row)
     term.write("Generation:     ")
-    generation = math.floor(turbine.getEnergyProducedLastTick()*100)/100
+    generation = math.floor(generation*100)/100
     term.write(tostring(generation) .. " RF/t           ")
     current_row = current_row + 1
 end
 
 
-function draw_power_flow()
+function draw_power_flow(generation)
     term.setCursor(1, current_row)
     term.write("Energy Delta:   ")
-    power_delta = turbine.getEnergyProducedLastTick() - output_meter.getAvg()
+    power_delta = generation - output_meter.getAvg()
     power_delta = math.floor(power_delta*100)/100
     if (power_delta < -500) then
         gpu.setForeground(0xFF0000)
@@ -124,10 +152,10 @@ function draw_power_flow()
 end
 
 
-function draw_runtime()
+function draw_runtime(generation)
     term.setCursor(1, current_row)
 
-    power_delta = turbine.getEnergyProducedLastTick() - output_meter.getAvg()
+    power_delta = generation - output_meter.getAvg()
     unit = ""
     if (power_delta > 0) then
         term.write("Charge Time:    ")
@@ -213,11 +241,13 @@ do
 
     if (reactor.getActive() == true) then
         if (turbine.getRotorSpeed() < 1800) then
-            turbine.setInductorEngaged(false)
+            disengage_turbine_coils()
         else
-            turbine.setInductorEngaged(true)
+            engage_turbine_coils()
         end
     end
+
+    generation = get_turbines_power_generation()
 
 
     draw_reactor_status(reactor.getActive())
@@ -227,9 +257,9 @@ do
     draw_battery_charge()
     draw_energy_stored()
     draw_grid_usage()
-    draw_energy_produced()
-    draw_power_flow()
-    draw_runtime()
+    draw_energy_produced(generation)
+    draw_power_flow(generation)
+    draw_runtime(generation)
     -- draw_power_cutoff()
     draw_last_message()
 
